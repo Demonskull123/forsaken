@@ -159,8 +159,8 @@ vAimbot:AddInput("Prediction", {
     Placeholder = "4",
     Numeric = true,
     Callback = function(p4)
-        if not tonumber(p4) then
-        end
+        local num = tonumber(p4)
+        if num and num >= 0 then t1.value8 = num end
     end
 })
 vAimbot:AddToggle("AutoCoinFlip", {
@@ -328,7 +328,8 @@ function t1.value24()
     Part.Parent = Character
     Character.PrimaryPart = Part
     local timestamp = tick()
-    t1.value20 = t1.value21.RenderStepped:Connect(function()
+    local conn
+    conn = t1.value21.RenderStepped:Connect(function()
         local v268 = not t1.value15
 
         if not v268 then
@@ -348,8 +349,10 @@ function t1.value24()
         end
 
         if v268 then
-            if t1.value20 then
-                t1.value20:Disconnect()
+            if conn then
+                conn:Disconnect()
+            end
+            if t1.value20 == conn then
                 t1.value20 = nil
             end
 
@@ -376,6 +379,7 @@ function t1.value24()
 
         Part.CFrame = v84.CFrame - v84.CFrame.LookVector * t1.value16
     end)
+    t1.value20 = conn
 end
 function t1.value25(p7)
     if t1.value22 then
@@ -411,6 +415,7 @@ vSurvivor:AddToggle("Backstab", {
     Text = "Auto Backstab",
     Default = false,
     Callback = function(p8)
+        t1.value15 = p8
         if not p8 then
             t1.value23()
         end
@@ -422,8 +427,8 @@ vSurvivor:AddInput("BackstabDistance", {
     Placeholder = "2",
     Numeric = true,
     Callback = function(p9)
-        if not tonumber(p9) then
-        end
+        local num = tonumber(p9)
+        if num and num >= 0 then t1.value16 = num end
     end
 })
 vSurvivor:AddInput("BackstabDuration", {
@@ -433,9 +438,7 @@ vSurvivor:AddInput("BackstabDuration", {
     Numeric = true,
     Callback = function(p10)
         local num = tonumber(p10)
-
-        if not (num and num > 0) then
-        end
+        if num and num > 0 then t1.value17 = num end
     end
 })
 
@@ -659,7 +662,7 @@ function t1.value40()
         end
     end
 
-    t1.value31.DescendantAdded:Connect(function(descendant)
+    t1.value33 = t1.value31.DescendantAdded:Connect(function(descendant)
         if not t1.value34 then
             return
         end
@@ -691,9 +694,9 @@ vSurvivor:AddToggle("AutoTrick", {
     Text = "Auto Trick",
     Default = false,
     Callback = function(p16)
+        t1.value34 = p16
         if p16 then
             t1.value40()
-
             return
         end
 
@@ -721,7 +724,7 @@ local function v17(p17)
 
     if t1.value49 then
         t1.value48.MouseBehavior = Enum.MouseBehavior.LockCenter
-        t1.value46.RenderStepped:Connect(function()
+        t1.value45 = t1.value46.RenderStepped:Connect(function()
             local Character = t1.value47.Character
             local v286 = Character and Character:FindFirstChild("HumanoidRootPart")
 
@@ -1169,7 +1172,7 @@ end)
 if ok then
     t1.value73 = result
 else
-    warn("[Auto Clone] Không tìm thấy RemoteEvent:", result)
+    warn("[Auto Clone] RemoteEvent not found:", result)
 end
 t1.value74 = nil
 function t1.value75(p22)
@@ -1402,9 +1405,8 @@ vSurvivor:AddInput("CloneRange", {
     Numeric = true,
     Callback = function(p30)
         local num = tonumber(p30)
-
         if num then
-            math.max(0, num)
+            t1.value68 = math.max(0, num)
         end
     end
 })
@@ -1422,9 +1424,8 @@ vSurvivor:AddInput("FacingDot", {
     Numeric = true,
     Callback = function(p32)
         local num = tonumber(p32)
-
         if num then
-            math.clamp(num, -1, 1)
+            t1.value70 = math.clamp(num, -1, 1)
         end
     end
 })
@@ -1748,9 +1749,7 @@ vGuest:AddInput("ABRange", {
     Finished = true,
     Callback = function(p35)
         local num = tonumber(p35)
-
-        if not (num and num > 0) then
-        end
+        if num and num > 0 then t1.value91 = num end
     end
 })
 vGuest:AddToggle("AbFace", {
@@ -1768,12 +1767,8 @@ vGuest:AddInput("ABDot", {
     Finished = true,
     Callback = function(p37)
         local num = tonumber(p37)
-
         if num then
-            num = num >= -1 and num <= 1
-        end
-
-        if not num then
+            t1.value93 = math.clamp(num, -1, 1)
         end
     end
 })
@@ -1848,9 +1843,7 @@ vGuest:AddInput("APDelay", {
     Finished = true,
     Callback = function(p39)
         local num = tonumber(p39)
-
-        if not (num and num >= 0) then
-        end
+        if num and num >= 0 then t1.value99 = num end
     end
 })
 t1.value100 = false
@@ -1977,9 +1970,7 @@ vGuest:AddInput("PunchAimDistance", {
     Finished = true,
     Callback = function(p41)
         local num = tonumber(p41)
-
-        if not (num and num >= 0) then
-        end
+        if num and num >= 0 then t1.value102 = num end
     end
 })
 
@@ -2070,35 +2061,8 @@ t1.itemESP = {
     tracked       = {},
 }
 
-local ITEM_CONTAINER_PATHS = {
-    function() return workspace:FindFirstChild("Items") end,
-    function() return workspace:FindFirstChild("Dropped") end,
-    function() return workspace:FindFirstChild("Pickups") end,
-    function() return workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Items") end,
-    function() return workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Map") and workspace.Map.Ingame.Map:FindFirstChild("Items") end,
-}
-
-local ITEM_NAME_HINTS = {
-    item = true, pickup = true, tool = true, collectible = true,
-    battery = true, medkit = true, flashlight = true, key = true,
-    bandage = true, fuel = true, coin = true, crate = true,
-}
-
 local function isLikelyItem(inst)
-    if not inst or not inst.Parent then return false end
-    if not (inst:IsA("Model") or inst:IsA("BasePart") or inst:IsA("Tool")) then return false end
-
-    local n = inst.Name:lower()
-    for hint in pairs(ITEM_NAME_HINTS) do
-        if n:find(hint) then return true end
-    end
-
-    if inst:IsA("Tool") then return true end
-
-    if inst:FindFirstChildOfClass("ProximityPrompt") then return true end
-    if inst:FindFirstChildOfClass("ClickDetector") then return true end
-
-    return false
+    return inst and inst.Parent and inst:IsA("Tool")
 end
 
 function t1.itemESP.clearAll()
@@ -2110,13 +2074,12 @@ end
 
 function t1.itemESP.applyOne(inst)
     if not t1.itemESP.enabled then return end
-    if not inst or not inst.Parent then return end
+    if not isLikelyItem(inst) then return end
+
     if t1.itemESP.tracked[inst] then
         if t1.itemESP.tracked[inst].Parent then return end
         t1.itemESP.tracked[inst] = nil
     end
-
-    if not isLikelyItem(inst) then return end
 
     for _, c in ipairs(inst:GetChildren()) do
         if c:IsA("Highlight") and c.Name == "ItemESP" then
@@ -2136,7 +2099,7 @@ function t1.itemESP.applyOne(inst)
 
     local lp = t1.value29
     local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-    local target = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart")
+    local target = inst:FindFirstChildWhichIsA("BasePart")
     if hrp and target then
         local d = (hrp.Position - target.Position).Magnitude
         h.Enabled = d <= t1.itemESP.range
@@ -2157,19 +2120,10 @@ function t1.itemESP.scan()
             t1.itemESP.tracked[inst] = nil
             if h and h.Parent then pcall(function() h:Destroy() end) end
         elseif hrp then
-            local target = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart")
+            local target = inst:FindFirstChildWhichIsA("BasePart")
             if target then
                 local d = (hrp.Position - target.Position).Magnitude
                 h.Enabled = d <= t1.itemESP.range
-            end
-        end
-    end
-
-    for _, getter in ipairs(ITEM_CONTAINER_PATHS) do
-        local okP, container = pcall(getter)
-        if okP and container then
-            for _, child in ipairs(container:GetDescendants()) do
-                t1.itemESP.applyOne(child)
             end
         end
     end
@@ -2183,6 +2137,7 @@ end
 
 function t1.itemESP.start()
     if t1.itemESP.root then return end
+    t1.itemESP.root = true
     t1.itemESP.enabled = true
     t1.itemESP.scan()
 
@@ -2226,21 +2181,25 @@ function t1.value107()
     if not HumanoidRootPart then
         return nil
     end
+    local Survivors = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
     local v173
     local huge = math.huge
     for _, player in ipairs(t1.value86:GetPlayers()) do
         if player ~= t1.value29 then
-            local Character2 = player.Character
+            local isSurv = Survivors and Survivors:FindFirstChild(player.Name)
+            if isSurv then
+                local Character2 = player.Character
 
-            if Character2 then
-                local HumanoidRootPart2 = Character2:FindFirstChild("HumanoidRootPart")
+                if Character2 then
+                    local HumanoidRootPart2 = Character2:FindFirstChild("HumanoidRootPart")
 
-                if HumanoidRootPart2 then
-                    local Magnitude = (HumanoidRootPart.Position - HumanoidRootPart2.Position).Magnitude
+                    if HumanoidRootPart2 then
+                        local Magnitude = (HumanoidRootPart.Position - HumanoidRootPart2.Position).Magnitude
 
-                    if Magnitude < huge then
-                        v173 = player
-                        huge = Magnitude
+                        if Magnitude < huge then
+                            v173 = player
+                            huge = Magnitude
+                        end
                     end
                 end
             end
@@ -2436,6 +2395,7 @@ vKiller:AddToggle("HitboxExpander", {
     Text = "M1 Hitbox Expander",
     Default = false,
     Callback = function(p51)
+        t1.value111 = p51
         if not p51 then
             t1.value110:StopExtendingHitbox()
         end
@@ -2449,8 +2409,8 @@ vKiller:AddInput("HitboxRange", {
     Placeholder = "4",
     Numeric = true,
     Callback = function(p52)
-        if not tonumber(p52) then
-        end
+        local num = tonumber(p52)
+        if num and num > 0 then t1.value112 = num end
     end
 })
 local AddInput = vKiller.AddInput
@@ -2462,8 +2422,8 @@ AddInput(vKiller, "HitboxDuration", {
     Placeholder = "1",
     Numeric = true,
     Callback = function(p53)
-        if not tonumber(p53) then
-        end
+        local num = tonumber(p53)
+        if num and num > 0 then t1.value113 = num end
     end
 })
 vKiller:AddDivider()
@@ -2566,7 +2526,7 @@ function t1.fireKillerSkill(p56)
         t1.killerAimAt(t1.killerSkills.aimPrediction, t1.killerSkills.aimDuration)
     end
     pcall(function()
-        game.ReplicatedStorage.Modules.Network.RemoteEvent:FireServer("UseActorAbility", p56)
+        game.ReplicatedStorage.Modules.Network.RemoteEvent:FireServer("UseActorAbility", { p56 })
     end)
 end
 function t1.hookKillerSkillButtons()
@@ -2748,7 +2708,10 @@ end
 
 local function u49(p5)
     t1.infiniteStamina = p5
-    local Sprinting = require(game.ReplicatedStorage.Systems.Character.Game.Sprinting)
+    local ok, Sprinting = pcall(function()
+        return require(game.ReplicatedStorage.Systems.Character.Game.Sprinting)
+    end)
+    if not ok or not Sprinting then return end
     if not t1.infiniteStamina then
         if t4.staminaConnection then t4.staminaConnection:Disconnect() t4.staminaConnection = nil end
         Sprinting.StaminaLossDisabled = nil
@@ -2756,7 +2719,7 @@ local function u49(p5)
         if t4.staminaConnection then t4.staminaConnection:Disconnect() end
         t4.staminaConnection = game:GetService("RunService").Heartbeat:Connect(function()
             if t1.infiniteStamina then
-                function Sprinting.StaminaLossDisabled() return true end
+                Sprinting.StaminaLossDisabled = function() return true end
                 return
             end
             t4.staminaConnection:Disconnect()
@@ -3246,9 +3209,7 @@ vFarmNoTp:AddInput("AutoGenDelay", {
     Numeric = true,
     Callback = function(p65)
         local num = tonumber(p65)
-
-        if not (num and num >= 0) then
-        end
+        if num and num >= 0 then t1.value136 = num end
     end
 })
 
@@ -3266,7 +3227,7 @@ v41:AddToggle("DieRunning", {
         end
 
         if p66 then
-            t1.value137.Heartbeat:Connect(function()
+            t1.value139 = t1.value137.Heartbeat:Connect(function()
                 local Character = t1.value138.Character
                 local v384 = Character and Character:FindFirstChildOfClass("Humanoid")
                 local v385 = Character and Character:FindFirstChild("HumanoidRootPart")
@@ -3373,7 +3334,8 @@ v45:AddSlider("UICornerSlider", {
     end
 })
 v45:AddDivider()
-v45:AddLabel("Menu Bind"):AddKeyPicker("MenuKeybind", {
+v45:AddLabel("Menu Bind")
+local menuKeybind = v45:AddKeyPicker("MenuKeybind", {
     Default = "RightShift",
     NoUI = true,
     Text = "Menu Keybind"
@@ -3381,7 +3343,7 @@ v45:AddLabel("Menu Bind"):AddKeyPicker("MenuKeybind", {
 v45:AddButton("Unload", function()
     t1.value1:Unload()
 end)
-t1.value1.ToggleKeybind = Options.MenuKeybind
+t1.value1.ToggleKeybind = menuKeybind
 v2:SetLibrary(t1.value1)
 v3:SetLibrary(t1.value1)
 v3:IgnoreThemeSettings()

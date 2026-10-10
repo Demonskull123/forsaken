@@ -451,6 +451,65 @@ if not v13 then
     v13 = "Mobile"
 end
 t1.value30 = v13
+
+-- ===== Killer infinite stamina + post-skill stamina restore =====
+t1.staminaGuard = {
+    infinite      = false,
+    restoreOnCast = true,
+    conn          = nil,
+}
+
+function t1.staminaGuard.forceFull()
+    local c = t1.value29.Character
+    if not c then return end
+
+    local sm = c:FindFirstChild("SpeedMultipliers")
+    if sm then
+        for _, v in ipairs(sm:GetChildren()) do
+            if v:IsA("NumberValue") or v:IsA("IntValue") then
+                local n = v.Name:lower()
+                if n:find("stam") or n:find("energy") or n:find("sprint") then
+                    local maxAttr = v:GetAttribute("Max") or v:GetAttribute("MaxValue")
+                    if maxAttr and type(maxAttr) == "number" then
+                        pcall(function() v.Value = maxAttr end)
+                    end
+                end
+            end
+        end
+    end
+
+    local stats = c:FindFirstChild("Stats")
+    if stats then
+        for _, v in ipairs(stats:GetChildren()) do
+            if v:IsA("NumberValue") or v:IsA("IntValue") then
+                local n = v.Name:lower()
+                if n:find("stam") or n:find("energy") or n:find("sprint") then
+                    local maxAttr = v:GetAttribute("Max") or v:GetAttribute("MaxValue")
+                    if maxAttr and type(maxAttr) == "number" then
+                        pcall(function() v.Value = maxAttr end)
+                    end
+                end
+            end
+        end
+    end
+end
+
+function t1.staminaGuard.startInfinite()
+    if t1.staminaGuard.conn then return end
+    t1.staminaGuard.conn = t1.value46.Heartbeat:Connect(function()
+        if not t1.staminaGuard.infinite then return end
+        t1.staminaGuard.forceFull()
+    end)
+end
+
+function t1.staminaGuard.stopInfinite()
+    if t1.staminaGuard.conn then
+        t1.staminaGuard.conn:Disconnect()
+        t1.staminaGuard.conn = nil
+    end
+end
+-- ===== end stamina guard =====
+
 local function v14()
     return t1.value29.PlayerGui:WaitForChild("MainUI"):WaitForChild("SprintingButton")
 end
@@ -1993,6 +2052,13 @@ t1.value29.CharacterAdded:Connect(function()
 end)
 -- ===== end character lock =====
 
+t1.value29.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if t1.staminaGuard then
+        t1.staminaGuard.forceFull()
+    end
+end)
+
 local vKiller = t1.value2:AddTab("Killer"):AddLeftGroupbox("Killer Abilities")
 
 t1.value104 = false
@@ -2283,6 +2349,11 @@ t1.killerSkillList = {
 }
 function t1.killerAimAt(p54, p55)
     if t1.skillLock then t1.skillLock.engage(p55 or t1.skillLock.holdDuration) end
+    if t1.staminaGuard and t1.staminaGuard.restoreOnCast then
+        t1.staminaGuard.forceFull()
+        task.delay(0.15, function() t1.staminaGuard.forceFull() end)
+        task.delay(0.4,  function() t1.staminaGuard.forceFull() end)
+    end
     if not p54 then
         return
     end
@@ -2332,6 +2403,12 @@ function t1.fireKillerSkill(p56)
         return
     end
     if t1.skillLock then t1.skillLock.engage(t1.skillLock.holdDuration) end
+    if t1.staminaGuard and t1.staminaGuard.restoreOnCast then
+        t1.staminaGuard.forceFull()
+        task.delay(0.15, function() t1.staminaGuard.forceFull() end)
+        task.delay(0.4,  function() t1.staminaGuard.forceFull() end)
+        task.delay(0.8,  function() t1.staminaGuard.forceFull() end)
+    end
     local now = tick()
     if t1.killerSkills.skillCooldowns[p56] and now - t1.killerSkills.skillCooldowns[p56] < 1 then
         return
@@ -2423,6 +2500,28 @@ vKiller:AddInput("KSLockDur", {
         if n and n > 0 then
             t1.skillLock.holdDuration = n
         end
+    end
+})
+vKiller:AddToggle("KillerInfStam", {
+    Text = "Infinite Stamina (Killer)",
+    Default = true,
+    Callback = function(p62)
+        if not t1.staminaGuard then return end
+        t1.staminaGuard.infinite = p62
+        if p62 then
+            t1.staminaGuard.startInfinite()
+            t1.staminaGuard.forceFull()
+        else
+            t1.staminaGuard.stopInfinite()
+        end
+    end
+})
+vKiller:AddToggle("KillerStamRestore", {
+    Text = "Restore Stamina On Skill",
+    Default = true,
+    Callback = function(p63)
+        if not t1.staminaGuard then return end
+        t1.staminaGuard.restoreOnCast = p63
     end
 })
 vKiller:AddDivider()
@@ -2936,8 +3035,7 @@ vFarmNoTp:AddToggle("AutoGen", {
                             return
                         end
 
-                        if PuzzleUI.Name ~= "PuzzleUI" then
-                            continue
+                        if PuzzleUI.Name ~= "PuzzleUI" then                            continue
                         end
                     end
 

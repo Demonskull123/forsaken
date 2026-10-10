@@ -2026,7 +2026,9 @@ function t1.skillLock.engage(duration)
         r.CFrame = lockedCFrame
         r.AssemblyLinearVelocity = Vector3.new()
     end)
-endfunction t1.skillLock.release()
+end
+
+function t1.skillLock.release()
     if not t1.skillLock.active then return end
     t1.skillLock.active = false
     t1.skillLock.lockUntil = 0

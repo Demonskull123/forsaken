@@ -2078,8 +2078,27 @@ local ITEM_CONTAINER_PATHS = {
     function() return workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Map") and workspace.Map.Ingame.Map:FindFirstChild("Items") end,
 }
 
+local ITEM_NAME_HINTS = {
+    item = true, pickup = true, tool = true, collectible = true,
+    battery = true, medkit = true, flashlight = true, key = true,
+    bandage = true, fuel = true, coin = true, crate = true,
+}
+
 local function isLikelyItem(inst)
-    return inst and inst.Parent and inst:IsA("Tool")
+    if not inst or not inst.Parent then return false end
+    if not (inst:IsA("Model") or inst:IsA("BasePart") or inst:IsA("Tool")) then return false end
+
+    local n = inst.Name:lower()
+    for hint in pairs(ITEM_NAME_HINTS) do
+        if n:find(hint) then return true end
+    end
+
+    if inst:IsA("Tool") then return true end
+
+    if inst:FindFirstChildOfClass("ProximityPrompt") then return true end
+    if inst:FindFirstChildOfClass("ClickDetector") then return true end
+
+    return false
 end
 
 function t1.itemESP.clearAll()

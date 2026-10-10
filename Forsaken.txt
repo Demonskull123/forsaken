@@ -2059,6 +2059,161 @@ t1.value29.CharacterAdded:Connect(function()
     end
 end)
 
+-- ===== Item ESP =====
+t1.itemESP = {
+    enabled       = false,
+    range         = 500,
+    fillColor     = Color3.fromRGB(255, 215, 0),
+    outlineColor  = Color3.fromRGB(255, 255, 255),
+    root          = nil,
+    conns         = {},
+    tracked       = {},
+}
+
+local ITEM_CONTAINER_PATHS = {
+    function() return workspace:FindFirstChild("Items") end,
+    function() return workspace:FindFirstChild("Dropped") end,
+    function() return workspace:FindFirstChild("Pickups") end,
+    function() return workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Items") end,
+    function() return workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Map") and workspace.Map.Ingame.Map:FindFirstChild("Items") end,
+}
+
+local ITEM_NAME_HINTS = {
+    item = true, pickup = true, tool = true, collectible = true,
+    battery = true, medkit = true, flashlight = true, key = true,
+    bandage = true, fuel = true, coin = true, crate = true,
+}
+
+local function isLikelyItem(inst)
+    if not inst or not inst.Parent then return false end
+    if not (inst:IsA("Model") or inst:IsA("BasePart") or inst:IsA("Tool")) then return false end
+
+    local n = inst.Name:lower()
+    for hint in pairs(ITEM_NAME_HINTS) do
+        if n:find(hint) then return true end
+    end
+
+    -- Tool = always item
+    if inst:IsA("Tool") then return true end
+
+    -- Part/Model with a ProximityPrompt or ClickDetector = interactable
+    if inst:FindFirstChildOfClass("ProximityPrompt") then return true end
+    if inst:FindFirstChildOfClass("ClickDetector") then return true end
+
+    return false
+end
+
+function t1.itemESP.clearAll()
+    for _, h in pairs(t1.itemESP.tracked) do
+        if h and h.Parent then pcall(function() h:Destroy() end) end
+    end
+    table.clear(t1.itemESP.tracked)
+end
+
+function t1.itemESP.applyOne(inst)
+    if not t1.itemESP.enabled then return end
+    if not inst or not inst.Parent then return end
+    if t1.itemESP.tracked[inst] then
+        if t1.itemESP.tracked[inst].Parent then return end
+        t1.itemESP.tracked[inst] = nil
+    end
+
+    if not isLikelyItem(inst) then return end
+
+    -- Skip if adorn already exists on this instance
+    for _, c in ipairs(inst:GetChildren()) do
+        if c:IsA("Highlight") and c.Name == "ItemESP" then
+            t1.itemESP.tracked[inst] = c
+            return
+        end
+    end
+
+    local h = Instance.new("Highlight")
+    h.Name = "ItemESP"
+    h.FillColor = t1.itemESP.fillColor
+    h.OutlineColor = t1.itemESP.outlineColor
+    h.FillTransparency = 0.5
+    h.OutlineTransparency = 0
+    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.Adornee = inst
+
+    -- Range gating: if far, hide
+    local lp = t1.value29
+    local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+    local target = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart")
+    if hrp and target then
+        local d = (hrp.Position - target.Position).Magnitude
+        h.Enabled = d <= t1.itemESP.range
+    end
+
+    h.Parent = inst
+    t1.itemESP.tracked[inst] = h
+end
+
+function t1.itemESP.scan()
+    if not t1.itemESP.enabled then return end
+
+    -- Rebuild range visibility every scan
+    local lp = t1.value29
+    local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+
+    for inst, h in pairs(t1.itemESP.tracked) do
+        if not inst or not inst.Parent or not h or not h.Parent then
+            t1.itemESP.tracked[inst] = nil
+            if h and h.Parent then pcall(function() h:Destroy() end) end
+        elseif hrp then
+            local target = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart")
+            if target then
+                local d = (hrp.Position - target.Position).Magnitude
+                h.Enabled = d <= t1.itemESP.range
+            end
+        end
+    end
+
+    for _, getter in ipairs(ITEM_CONTAINER_PATHS) do
+        local okP, container = pcall(getter)
+        if okP and container then
+            for _, child in ipairs(container:GetDescendants()) do
+                t1.itemESP.applyOne(child)
+            end
+        end
+    end
+
+    -- Broad fallback: scan workspace children at shallow depth
+    for _, child in ipairs(workspace:GetChildren()) do
+        if child:IsA("Tool") then
+            t1.itemESP.applyOne(child)
+        end
+    end
+end
+
+function t1.itemESP.start()
+    if t1.itemESP.root then return end
+    t1.itemESP.enabled = true
+    t1.itemESP.scan()
+
+    table.insert(t1.itemESP.conns, t1.value46.Heartbeat:Connect(function()
+        t1.itemESP.scan()
+    end))
+
+    -- Re-hook CharacterAdded for range updates
+    table.insert(t1.itemESP.conns, t1.value29.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        t1.itemESP.scan()
+    end))
+end
+
+function t1.itemESP.stop()
+    t1.itemESP.enabled = false
+    for _, c in ipairs(t1.itemESP.conns) do
+        pcall(function() c:Disconnect() end)
+    end
+    table.clear(t1.itemESP.conns)
+    t1.itemESP.clearAll()
+    t1.itemESP.root = nil
+end
+-- ===== end Item ESP =====
+
 local vKiller = t1.value2:AddTab("Killer"):AddLeftGroupbox("Killer Abilities")
 
 t1.value104 = false
@@ -2797,8 +2952,7 @@ t1.value123 = nil
 function t1.value125()
     if t1.value123 then
         t1.value123:Destroy()
-        t1.value123 = nil
-    end
+        t1.value123 = nil    end
 
     if not t1.value124 then
         return
@@ -3012,6 +3166,31 @@ v36:AddToggle("GeneratorESP", {
     end
 })
 
+v36:AddDivider()
+v36:AddLabel("Item ESP")
+v36:AddToggle("ItemESP", {
+    Text = "Item",
+    Default = false,
+    Callback = function(p64)
+        if p64 then
+            t1.itemESP.start()
+        else
+            t1.itemESP.stop()
+        end
+    end
+})
+v36:AddSlider("ItemESPRange", {
+    Text = "Item Range",
+    Desc = "Hide items beyond this distance",
+    Default = 500,
+    Min = 25,
+    Max = 5000,
+    Rounding = 0,
+    Callback = function(p65)
+        t1.itemESP.range = p65
+    end
+})
+
 local vFarmNoTp = t1.value2:AddTab("Farm (No TP)"):AddLeftGroupbox("Stand-Near Generator")
 
 t1.value135 = false
@@ -3035,7 +3214,8 @@ vFarmNoTp:AddToggle("AutoGen", {
                             return
                         end
 
-                        if PuzzleUI.Name ~= "PuzzleUI" then                            continue
+                        if PuzzleUI.Name ~= "PuzzleUI" then
+                            continue
                         end
                     end
 

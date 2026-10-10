@@ -1924,6 +1924,75 @@ vGuest:AddInput("PunchAimDistance", {
     end
 })
 
+-- ===== Character lock during killer skills =====
+t1.skillLock = {
+    active       = false,
+    holdDuration = 1.2,
+    lockConn     = nil,
+    lockUntil    = 0,
+    savedAutoRot = nil,
+    enabled      = true,
+}
+
+function t1.skillLock.engage(duration)
+    if not t1.skillLock.enabled then return end
+    local dur = duration or t1.skillLock.holdDuration
+    local newEnd = tick() + dur
+    if newEnd > t1.skillLock.lockUntil then
+        t1.skillLock.lockUntil = newEnd
+    end
+    if t1.skillLock.active then return end
+
+    local char = t1.value29.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    t1.skillLock.active = true
+    t1.skillLock.savedAutoRot = hum.AutoRotate
+    hum.AutoRotate = false
+
+    local lockedCFrame = hrp.CFrame
+    t1.skillLock.lockConn = t1.value46.RenderStepped:Connect(function()
+        if not t1.skillLock.active then return end
+        if tick() >= t1.skillLock.lockUntil then
+            t1.skillLock.release()
+            return
+        end
+        local c = t1.value29.Character
+        if not c then t1.skillLock.release() return end
+        local r = c:FindFirstChild("HumanoidRootPart")
+        if not r then t1.skillLock.release() return end
+        r.CFrame = lockedCFrame
+        r.AssemblyLinearVelocity = Vector3.new()
+    end)
+end
+
+function t1.skillLock.release()
+    if not t1.skillLock.active then return end
+    t1.skillLock.active = false
+    t1.skillLock.lockUntil = 0
+    if t1.skillLock.lockConn then
+        t1.skillLock.lockConn:Disconnect()
+        t1.skillLock.lockConn = nil
+    end
+    local char = t1.value29.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and t1.skillLock.savedAutoRot ~= nil then
+            hum.AutoRotate = t1.skillLock.savedAutoRot
+        end
+    end
+    t1.skillLock.savedAutoRot = nil
+end
+
+t1.value29.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    t1.skillLock.release()
+end)
+-- ===== end character lock =====
+
 local vKiller = t1.value2:AddTab("Killer"):AddLeftGroupbox("Killer Abilities")
 
 t1.value104 = false
@@ -2213,6 +2282,7 @@ t1.killerSkillList = {
     WalkspeedOverride = true
 }
 function t1.killerAimAt(p54, p55)
+    if t1.skillLock then t1.skillLock.engage(p55 or t1.skillLock.holdDuration) end
     if not p54 then
         return
     end
@@ -2261,6 +2331,7 @@ function t1.fireKillerSkill(p56)
     if not t1.killerSkillList[p56] then
         return
     end
+    if t1.skillLock then t1.skillLock.engage(t1.skillLock.holdDuration) end
     local now = tick()
     if t1.killerSkills.skillCooldowns[p56] and now - t1.killerSkills.skillCooldowns[p56] < 1 then
         return
@@ -2329,6 +2400,28 @@ vKiller:AddInput("KSAimPrediction", {
         local num = tonumber(p58)
         if num and num >= 0 then
             t1.killerSkills.aimPrediction = num
+        end
+    end
+})
+vKiller:AddToggle("KSLockChar", {
+    Text = "Lock Character On Skill",
+    Default = true,
+    Callback = function(p60)
+        if not t1.skillLock then return end
+        t1.skillLock.enabled = p60
+        if not p60 then t1.skillLock.release() end
+    end
+})
+vKiller:AddInput("KSLockDur", {
+    Text = "Lock Duration (s)",
+    Default = "1.2",
+    Placeholder = "1.2",
+    Numeric = true,
+    Callback = function(p61)
+        if not t1.skillLock then return end
+        local n = tonumber(p61)
+        if n and n > 0 then
+            t1.skillLock.holdDuration = n
         end
     end
 })

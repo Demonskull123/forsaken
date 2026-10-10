@@ -2026,9 +2026,7 @@ function t1.skillLock.engage(duration)
         r.CFrame = lockedCFrame
         r.AssemblyLinearVelocity = Vector3.new()
     end)
-end
-
-function t1.skillLock.release()
+endfunction t1.skillLock.release()
     if not t1.skillLock.active then return end
     t1.skillLock.active = false
     t1.skillLock.lockUntil = 0
@@ -2078,29 +2076,8 @@ local ITEM_CONTAINER_PATHS = {
     function() return workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Map") and workspace.Map.Ingame.Map:FindFirstChild("Items") end,
 }
 
-local ITEM_NAME_HINTS = {
-    item = true, pickup = true, tool = true, collectible = true,
-    battery = true, medkit = true, flashlight = true, key = true,
-    bandage = true, fuel = true, coin = true, crate = true,
-}
-
 local function isLikelyItem(inst)
-    if not inst or not inst.Parent then return false end
-    if not (inst:IsA("Model") or inst:IsA("BasePart") or inst:IsA("Tool")) then return false end
-
-    local n = inst.Name:lower()
-    for hint in pairs(ITEM_NAME_HINTS) do
-        if n:find(hint) then return true end
-    end
-
-    -- Tool = always item
-    if inst:IsA("Tool") then return true end
-
-    -- Part/Model with a ProximityPrompt or ClickDetector = interactable
-    if inst:FindFirstChildOfClass("ProximityPrompt") then return true end
-    if inst:FindFirstChildOfClass("ClickDetector") then return true end
-
-    return false
+    return inst and inst.Parent and inst:IsA("Tool")
 end
 
 function t1.itemESP.clearAll()
@@ -2120,7 +2097,6 @@ function t1.itemESP.applyOne(inst)
 
     if not isLikelyItem(inst) then return end
 
-    -- Skip if adorn already exists on this instance
     for _, c in ipairs(inst:GetChildren()) do
         if c:IsA("Highlight") and c.Name == "ItemESP" then
             t1.itemESP.tracked[inst] = c
@@ -2137,7 +2113,6 @@ function t1.itemESP.applyOne(inst)
     h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     h.Adornee = inst
 
-    -- Range gating: if far, hide
     local lp = t1.value29
     local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
     local target = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart")
@@ -2153,7 +2128,6 @@ end
 function t1.itemESP.scan()
     if not t1.itemESP.enabled then return end
 
-    -- Rebuild range visibility every scan
     local lp = t1.value29
     local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
 
@@ -2179,7 +2153,6 @@ function t1.itemESP.scan()
         end
     end
 
-    -- Broad fallback: scan workspace children at shallow depth
     for _, child in ipairs(workspace:GetChildren()) do
         if child:IsA("Tool") then
             t1.itemESP.applyOne(child)
@@ -2196,7 +2169,6 @@ function t1.itemESP.start()
         t1.itemESP.scan()
     end))
 
-    -- Re-hook CharacterAdded for range updates
     table.insert(t1.itemESP.conns, t1.value29.CharacterAdded:Connect(function()
         task.wait(0.5)
         t1.itemESP.scan()
